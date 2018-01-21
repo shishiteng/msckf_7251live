@@ -1,12 +1,12 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#ifndef MSCKF_VIO_FEATURE_H
-#define MSCKF_VIO_FEATURE_H
+#ifndef MSCKF_FEATURE_H
+#define MSCKF_FEATURE_H
 
 #include <iostream>
 #include <map>
@@ -20,7 +20,7 @@
 #include "imu_state.h"
 #include "cam_state.h"
 
-namespace msckf_vio {
+namespace msckf {
 
 /*
  * @brief Feature Salient part of an image. Please refer
@@ -435,6 +435,6 @@ bool Feature::initializePosition(
 
   return is_valid_solution;
 }
-} // namespace msckf_vio
+} // namespace msckf
 
-#endif // MSCKF_VIO_FEATURE_H
+#endif // MSCKF_FEATURE_H

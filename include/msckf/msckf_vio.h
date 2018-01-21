@@ -1,12 +1,12 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#ifndef MSCKF_VIO_H
-#define MSCKF_VIO_H
+#ifndef MSCKF_H
+#define MSCKF_H
 
 #include <map>
 #include <set>
@@ -26,9 +26,9 @@
 #include "imu_state.h"
 #include "cam_state.h"
 #include "feature.hpp"
-#include <msckf_vio/CameraMeasurement.h>
+#include <msckf/CameraMeasurement.h>
 
-namespace msckf_vio {
+namespace msckf {
 /*
  * @brief MsckfVio Implements the algorithm in
  *    Anatasios I. Mourikis, and Stergios I. Roumeliotis,
@@ -166,6 +166,8 @@ class MsckfVio {
     // Reset the system online if the uncertainty is too large.
     void onlineReset();
 
+    void publishLostFeatures(std::vector<FeatureIDType> lost_feature_ids, ros::Time timestamp);
+      
     // Chi squared test table.
     static std::map<int, double> chi_squared_test_table;
 
@@ -182,6 +184,7 @@ class MsckfVio {
     // transfer delay between IMU and Image messages.
     std::vector<sensor_msgs::Imu> imu_msg_buffer;
 
+    ros::Time cur_msg_timestamp;
     // Indicate if the gravity vector is set.
     bool is_gravity_set;
 
@@ -212,6 +215,7 @@ class MsckfVio {
     ros::Subscriber feature_sub;
     ros::Publisher odom_pub;
     ros::Publisher path_pub;
+    ros::Publisher bias_pub;
     ros::Publisher feature_pub;
     tf::TransformBroadcaster tf_pub;
     ros::ServiceServer reset_srv;
@@ -237,11 +241,14 @@ class MsckfVio {
     geometry_msgs::TransformStamped raw_mocap_odom_msg;
     Eigen::Isometry3d mocap_initial_frame;
     nav_msgs::Path path;
+
+    //debug
+    ros::Publisher lost_features_pub;
 };
 
 typedef MsckfVio::Ptr MsckfVioPtr;
 typedef MsckfVio::ConstPtr MsckfVioConstPtr;
 
-} // namespace msckf_vio
+} // namespace msckf
 
 #endif

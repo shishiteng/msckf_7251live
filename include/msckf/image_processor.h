@@ -1,12 +1,12 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#ifndef MSCKF_VIO_IMAGE_PROCESSOR_H
-#define MSCKF_VIO_IMAGE_PROCESSOR_H
+#ifndef MSCKF_IMAGE_PROCESSOR_H
+#define MSCKF_IMAGE_PROCESSOR_H
 
 #include <vector>
 #include <map>
@@ -22,13 +22,11 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 
-#include <msckf_vio/CameraMeasurement.h>
+#include <msckf/CameraMeasurement.h>
 
-#include "camodocal/camera_models/CameraFactory.h"
-#include "camodocal/camera_models/CataCamera.h"
-#include "camodocal/camera_models/PinholeCamera.h"
 
-namespace msckf_vio {
+
+namespace msckf {
 
 /*
  * @brief ImageProcessor Detects and tracks features
@@ -391,12 +389,12 @@ private:
   void updateFeatureLifetime();
   void featureLifetimeStatistics();
 
-  camodocal::CameraPtr m_camera;
+  //camodocal::CameraPtr m_camera;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;
 typedef ImageProcessor::ConstPtr ImageProcessorConstPtr;
 
-} // end namespace msckf_vio
+} // end namespace msckf
 
 #endif

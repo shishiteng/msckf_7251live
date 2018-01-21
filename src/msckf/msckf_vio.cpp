@@ -21,15 +21,16 @@
 #include <tf_conversions/tf_eigen.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/Image.h>
 
-#include <msckf_vio/msckf_vio.h>
-#include <msckf_vio/math_utils.hpp>
-#include <msckf_vio/utils.h>
+#include <msckf/msckf_vio.h>
+#include <msckf/math_utils.hpp>
+#include <msckf/utils.h>
 
 using namespace std;
 using namespace Eigen;
 
-namespace msckf_vio{
+namespace msckf{
 // Static member variables in IMUState class.
 StateIDType IMUState::next_id = 0;
 double IMUState::gyro_noise = 0.001;
@@ -177,10 +178,10 @@ bool MsckfVio::loadParameters() {
 
 bool MsckfVio::createRosIO() {
   odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
-  feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
-      "feature_point_cloud", 10);
+  feature_pub = nh.advertise<sensor_msgs::PointCloud2>("feature_point_cloud", 10);
 
   path_pub = nh.advertise<nav_msgs::Path>("path", 1000);
+  bias_pub = nh.advertise<sensor_msgs::PointCloud>("imu_bias", 1000);
 
   reset_srv = nh.advertiseService("reset",&MsckfVio::resetCallback, this);
 
@@ -190,6 +191,8 @@ bool MsckfVio::createRosIO() {
   mocap_odom_sub = nh.subscribe("mocap_odom", 10,&MsckfVio::mocapOdomCallback, this);
   mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
 
+  lost_features_pub = nh.advertise<CameraMeasurement>("lost_features", 3);
+  
   return true;
 }
 
@@ -235,7 +238,8 @@ void MsckfVio::imuCallback(
   imu_msg_buffer.push_back(*msg);
 
   if (!is_gravity_set) {
-    if (imu_msg_buffer.size() < 200) return;
+    if (imu_msg_buffer.size() < 200)
+      return;
     //if (imu_msg_buffer.size() < 10) return;
     initializeGravityAndBias();
     is_gravity_set = true;
@@ -261,23 +265,23 @@ void MsckfVio::initializeGravityAndBias() {
     sum_linear_acc += linear_acc;
   }
 
-  state_server.imu_state.gyro_bias =
-    sum_angular_vel / imu_msg_buffer.size();
+  state_server.imu_state.gyro_bias = sum_angular_vel / imu_msg_buffer.size();
   //IMUState::gravity =
   //  -sum_linear_acc / imu_msg_buffer.size();
   // This is the gravity in the IMU frame.
-  Vector3d gravity_imu =
-    sum_linear_acc / imu_msg_buffer.size();
+  Vector3d gravity_imu = sum_linear_acc / imu_msg_buffer.size();
 
   // Initialize the initial orientation, so that the estimation
   // is consistent with the inertial frame.
   double gravity_norm = gravity_imu.norm();
   IMUState::gravity = Vector3d(0.0, 0.0, -gravity_norm);
 
-  Quaterniond q0_i_w = Quaterniond::FromTwoVectors(
-    gravity_imu, -IMUState::gravity);
-  state_server.imu_state.orientation =
-    rotationToQuaternion(q0_i_w.toRotationMatrix().transpose());
+  Quaterniond q0_i_w = Quaterniond::FromTwoVectors(gravity_imu, -IMUState::gravity);
+  state_server.imu_state.orientation = rotationToQuaternion(q0_i_w.toRotationMatrix().transpose());
+
+  cout<<"initial gravity imu:"<<gravity_imu.transpose()<<endl;
+  cout<<"initial gravity norm:"<<IMUState::gravity.transpose()<<endl;
+  cout<<"initial orientation:"<< state_server.imu_state.orientation.transpose() <<endl;
 
   return;
 }
@@ -368,6 +372,8 @@ void MsckfVio::featureCallback(const CameraMeasurementConstPtr& msg)
     state_server.imu_state.time = msg->header.stamp.toSec();
   }
 
+  cur_msg_timestamp = msg->header.stamp;
+  
   static double max_processing_time = 0.0;
   static int critical_time_cntr = 0;
   double processing_start_time = ros::Time::now().toSec();
@@ -916,10 +922,11 @@ void MsckfVio::featureJacobian(
   return;
 }
 
-void MsckfVio::measurementUpdate(
-    const MatrixXd& H, const VectorXd& r) {
+void MsckfVio::measurementUpdate(const MatrixXd& H, const VectorXd& r)
+{
 
-  if (H.rows() == 0 || r.rows() == 0) return;
+  if (H.rows() == 0 || r.rows() == 0)
+    return;
 
   // Decompose the final Jacobian matrix to reduce computational
   // complexity as in Equation (28), (29).
@@ -957,8 +964,7 @@ void MsckfVio::measurementUpdate(
   // Compute the Kalman gain.
   const MatrixXd& P = state_server.state_cov;
   MatrixXd S = H_thin*P*H_thin.transpose() +
-      Feature::observation_noise*MatrixXd::Identity(
-        H_thin.rows(), H_thin.rows());
+      Feature::observation_noise*MatrixXd::Identity(H_thin.rows(), H_thin.rows());
   //MatrixXd K_transpose = S.fullPivHouseholderQr().solve(H_thin*P);
   MatrixXd K_transpose = S.ldlt().solve(H_thin*P);
   MatrixXd K = K_transpose.transpose();
@@ -980,19 +986,15 @@ void MsckfVio::measurementUpdate(
     //return;
   }
 
-  const Vector4d dq_imu =
-    smallAngleQuaternion(delta_x_imu.head<3>());
-  state_server.imu_state.orientation = quaternionMultiplication(
-      dq_imu, state_server.imu_state.orientation);
+  const Vector4d dq_imu = smallAngleQuaternion(delta_x_imu.head<3>());
+  state_server.imu_state.orientation = quaternionMultiplication(dq_imu, state_server.imu_state.orientation);
   state_server.imu_state.gyro_bias += delta_x_imu.segment<3>(3);
   state_server.imu_state.velocity += delta_x_imu.segment<3>(6);
   state_server.imu_state.acc_bias += delta_x_imu.segment<3>(9);
   state_server.imu_state.position += delta_x_imu.segment<3>(12);
 
-  const Vector4d dq_extrinsic =
-    smallAngleQuaternion(delta_x_imu.segment<3>(15));
-  state_server.imu_state.R_imu_cam0 = quaternionToRotation(
-      dq_extrinsic) * state_server.imu_state.R_imu_cam0;
+  const Vector4d dq_extrinsic = smallAngleQuaternion(delta_x_imu.segment<3>(15));
+  state_server.imu_state.R_imu_cam0 = quaternionToRotation(dq_extrinsic) * state_server.imu_state.R_imu_cam0;
   state_server.imu_state.t_cam0_imu += delta_x_imu.segment<3>(18);
 
   // Update the camera states.
@@ -1040,6 +1042,21 @@ bool MsckfVio::gatingTest(
   }
 }
 
+void MsckfVio::publishLostFeatures(vector<FeatureIDType> lost_feature_ids, ros::Time timestamp)
+{
+  // Publish features.
+  CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
+  feature_msg_ptr->header.stamp = timestamp;
+  feature_msg_ptr->header.frame_id = "lost_features";
+
+  for (int i = 0; i < lost_feature_ids.size(); ++i) {
+    feature_msg_ptr->features.push_back(FeatureMeasurement());
+    feature_msg_ptr->features[i].id = lost_feature_ids[i];
+  }
+
+  lost_features_pub.publish(feature_msg_ptr);
+}
+  
 void MsckfVio::removeLostFeatures() {
 
   // Remove the features that lost track.
@@ -1079,20 +1096,18 @@ void MsckfVio::removeLostFeatures() {
     processed_feature_ids.push_back(feature.id);
   }
 
-  //cout << "invalid/processed feature #: " <<
-  //  invalid_feature_ids.size() << "/" <<
-  //  processed_feature_ids.size() << endl;
-  //cout << "jacobian row #: " << jacobian_row_size << endl;
+  cout <<"invalid/processed feature #: "<<invalid_feature_ids.size()<<"/"<<processed_feature_ids.size()<<endl;
+  cout << "jacobian row #: " << jacobian_row_size << endl;
 
   // Remove the features that do not have enough measurements.
   for (const auto& feature_id : invalid_feature_ids)
     map_server.erase(feature_id);
 
   // Return if there is no lost feature to be processed.
-  if (processed_feature_ids.size() == 0) return;
+  if (processed_feature_ids.size() == 0)
+    return;
 
-  MatrixXd H_x = MatrixXd::Zero(jacobian_row_size,
-      21+6*state_server.cam_states.size());
+  MatrixXd H_x = MatrixXd::Zero(jacobian_row_size,21+6*state_server.cam_states.size());
   VectorXd r = VectorXd::Zero(jacobian_row_size);
   int stack_cntr = 0;
 
@@ -1100,6 +1115,8 @@ void MsckfVio::removeLostFeatures() {
   for (const auto& feature_id : processed_feature_ids) {
     auto& feature = map_server[feature_id];
 
+    cout<<" processed feautre id:"<< feature_id <<endl;
+    
     vector<StateIDType> cam_state_ids(0);
     for (const auto& measurement : feature.observations)
       cam_state_ids.push_back(measurement.first);
@@ -1122,6 +1139,9 @@ void MsckfVio::removeLostFeatures() {
   H_x.conservativeResize(stack_cntr, H_x.cols());
   r.conservativeResize(stack_cntr);
 
+  //
+  publishLostFeatures(processed_feature_ids,cur_msg_timestamp);
+  
   // Perform the measurement update step.
   measurementUpdate(H_x, r);
 
@@ -1466,8 +1486,22 @@ void MsckfVio::publish(const ros::Time& time) {
   feature_pub.publish(feature_msg);
 #endif
 
+  //publish imu bias
+  sensor_msgs::PointCloudPtr bias_msg_ptr(new sensor_msgs::PointCloud);
+  bias_msg_ptr->header = odom_msg.header;
+  
+  sensor_msgs::ChannelFloat32 bias_acc;
+  sensor_msgs::ChannelFloat32 bias_gyr;
+  for(int i=0;i<3;i++) {
+    bias_acc.values.push_back(imu_state.acc_bias[i]);
+    bias_gyr.values.push_back(imu_state.gyro_bias[i]);
+  }
+  bias_msg_ptr->channels.push_back(bias_acc);
+  bias_msg_ptr->channels.push_back(bias_gyr);
+  bias_pub.publish(bias_msg_ptr);
+  
   return;
 }
 
-} // namespace msckf_vio
+} // namespace msckf
 

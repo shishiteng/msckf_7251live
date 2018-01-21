@@ -10,9 +10,9 @@
 #include <opencv2/opencv.hpp>
 
 #include "visensor7251/device.h"
-#include "msckf_vio/image_processor.h"
-#include "msckf_vio/msckf_vio.h"
-//#include <msckf_vio/CameraMeasurement.h>
+#include "msckf/image_processor.h"
+#include "msckf/msckf_vio.h"
+//#include <msckf/CameraMeasurement.h>
 
 using namespace cv;
 using namespace std;
@@ -23,8 +23,8 @@ using namespace std;
 //supernode camera
 sn::device *cam = NULL;
 
-msckf_vio::ImageProcessor *tracker;
-msckf_vio::MsckfVio *estimator;
+msckf::ImageProcessor *tracker;
+msckf::MsckfVio *estimator;
 
 /******************全局配置 start**********************/
 int img_frame_rate = 20;
@@ -227,7 +227,7 @@ void image_process()
       sensor_msgs::ImageConstPtr img_msg0( new sensor_msgs::Image(msg0));
       sensor_msgs::ImageConstPtr img_msg1( new sensor_msgs::Image(msg1));
 
-      msckf_vio::CameraMeasurementPtr feature_msg_ptr;
+      msckf::CameraMeasurementPtr feature_msg_ptr;
       feature_msg_ptr = tracker->stereoCallback(img_msg0,img_msg1);
 
       estimator->featureCallback(feature_msg_ptr);
@@ -259,8 +259,8 @@ int main(int argc, char **argv)
     return -1;
   }
 
-  tracker = new msckf_vio::ImageProcessor(n);
-  estimator = new msckf_vio::MsckfVio(n);
+  tracker = new msckf::ImageProcessor(n);
+  estimator = new msckf::MsckfVio(n);
 
   //initialize
   tracker->initialize();

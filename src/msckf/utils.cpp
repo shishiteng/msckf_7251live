@@ -1,14 +1,14 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#include <msckf_vio/utils.h>
+#include <msckf/utils.h>
 #include <vector>
 
-namespace msckf_vio {
+namespace msckf {
 namespace utils {
 
 Eigen::Isometry3d getTransformEigen(const ros::NodeHandle &nh,
@@ -89,4 +89,4 @@ cv::Mat getKalibrStyleTransform(const ros::NodeHandle &nh,
 }
 
 } // namespace utils
-} // namespace msckf_vio
+} // namespace msckf

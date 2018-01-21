@@ -1,12 +1,12 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#ifndef MSCKF_VIO_IMU_STATE_H
-#define MSCKF_VIO_IMU_STATE_H
+#ifndef MSCKF_IMU_STATE_H
+#define MSCKF_IMU_STATE_H
 
 #include <map>
 #include <vector>
@@ -15,7 +15,7 @@
 
 #define GRAVITY_ACCELERATION 9.81
 
-namespace msckf_vio {
+namespace msckf {
 
 /*
  * @brief IMUState State for IMU
@@ -105,6 +105,6 @@ struct IMUState {
 
 typedef IMUState::StateIDType StateIDType;
 
-} // namespace msckf_vio
+} // namespace msckf
 
-#endif // MSCKF_VIO_IMU_STATE_H
+#endif // MSCKF_IMU_STATE_H

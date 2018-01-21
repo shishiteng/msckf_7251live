@@ -14,7 +14,7 @@
 
 #include "imu_state.h"
 
-namespace msckf_vio {
+namespace msckf {
 /*
  * @brief CAMState Stored camera state in order to
  *    form measurement model.
@@ -62,6 +62,6 @@ struct CAMState {
 typedef std::map<StateIDType, CAMState, std::less<int>,
         Eigen::aligned_allocator<
         std::pair<const StateIDType, CAMState> > > CamStateServer;
-} // namespace msckf_vio
+} // namespace msckf
 
 #endif // MSCKF_VIO_CAM_STATE_H

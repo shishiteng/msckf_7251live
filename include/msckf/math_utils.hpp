@@ -1,17 +1,17 @@
 /*
  * COPYRIGHT AND PERMISSION NOTICE
- * Penn Software MSCKF_VIO
+ * Penn Software MSCKF
  * Copyright (C) 2017 The Trustees of the University of Pennsylvania
  * All rights reserved.
  */
 
-#ifndef MSCKF_VIO_MATH_UTILS_HPP
-#define MSCKF_VIO_MATH_UTILS_HPP
+#ifndef MSCKF_MATH_UTILS_HPP
+#define MSCKF_MATH_UTILS_HPP
 
 #include <cmath>
 #include <Eigen/Dense>
 
-namespace msckf_vio {
+namespace msckf {
 
 /*
  *  @brief Create a skew-symmetric matrix from a 3-element vector.
@@ -158,6 +158,6 @@ inline Eigen::Vector4d rotationToQuaternion(
   return q;
 }
 
-} // end namespace msckf_vio
+} // end namespace msckf
 
-#endif // MSCKF_VIO_MATH_UTILS_HPP
+#endif // MSCKF_MATH_UTILS_HPP

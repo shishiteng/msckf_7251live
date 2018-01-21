@@ -36,7 +36,6 @@ find_package(SuiteSparse REQUIRED)
 ##################
 add_message_files(
   FILES
-
   FeatureMeasurement.msg
   CameraMeasurement.msg
   TrackingInfo.msg
@@ -72,12 +71,12 @@ include_directories(
   ${SUITESPARSE_INCLUDE_DIRS}
 )
 
-# Msckf Vio
+# Msckf 
 add_executable(msckf
   src/main.cpp
-  src/msckf_vio/image_processor.cpp
-  src/msckf_vio/msckf_vio.cpp
-  src/msckf_vio/utils.cpp
+  src/msckf/image_processor.cpp
+  src/msckf/msckf_vio.cpp
+  src/msckf/utils.cpp
   src/visensor7251/device.cpp
   src/visensor7251/snTool.cpp
 )

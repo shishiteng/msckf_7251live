@@ -26,14 +26,10 @@
   <depend>image_transport</depend>
   <depend>cv_bridge</depend>
   <depend>message_filters</depend>
-  <depend>pcl_conversions</depend>
-  <depend>pcl_ros</depend>
   <depend>std_srvs</depend>
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
 
-  <depend>libpcl-all-dev</depend>
-  <depend>libpcl-all</depend>
   <depend>suitesparse</depend>
 
   <test_depend>rosunit</test_depend>

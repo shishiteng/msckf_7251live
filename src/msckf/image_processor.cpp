@@ -14,16 +14,18 @@
 #include <sensor_msgs/PointCloud.h>
 #include <random_numbers/random_numbers.h>
 
-#include <msckf_vio/CameraMeasurement.h>
-#include <msckf_vio/TrackingInfo.h>
-#include <msckf_vio/image_processor.h>
-#include <msckf_vio/utils.h>
+#include <msckf/image_processor.h>
+#include <msckf/utils.h>
+
+#include <msckf/CameraMeasurement.h>
+#include <msckf/TrackingInfo.h>
+
 
 using namespace std;
 using namespace cv;
 using namespace Eigen;
 
-namespace msckf_vio {
+namespace msckf {
 ImageProcessor::ImageProcessor(ros::NodeHandle& n) :
   nh(n),
   is_first_img(true),
@@ -31,6 +33,7 @@ ImageProcessor::ImageProcessor(ros::NodeHandle& n) :
   stereo_sub(10),
   prev_features_ptr(new GridFeatures()),
   curr_features_ptr(new GridFeatures()) {
+  next_feature_id = 0;
   return;
 }
 
@@ -270,7 +273,6 @@ bool ImageProcessor::initialize() {
   //ROS_DEBUG("Statistics: %f",
   //    (ros::Time::now()-start_time).toSec());
 
-#if 1
   CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
   feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
 
@@ -299,9 +301,16 @@ bool ImageProcessor::initialize() {
     feature_msg_ptr->features[i].v0 = curr_cam0_points_undistorted[i].y;
     feature_msg_ptr->features[i].u1 = curr_cam1_points_undistorted[i].x;
     feature_msg_ptr->features[i].v1 = curr_cam1_points_undistorted[i].y;
+    //distorted points
+    feature_msg_ptr->features[i].du0 = curr_cam0_points[i].x;
+    feature_msg_ptr->features[i].dv0 = curr_cam0_points[i].y;
+    feature_msg_ptr->features[i].du1 = curr_cam1_points[i].x;
+    feature_msg_ptr->features[i].dv1 = curr_cam1_points[i].y;
   }
-#endif
 
+    
+  cout<<"size of FeatureMeasurement:"<<sizeof(FeatureMeasurement)<<endl;
+  
   // Publish features in the current image.
   start_time = ros::Time::now();
   publish();
@@ -1325,6 +1334,7 @@ void ImageProcessor::publish() {
   // Publish features.
   CameraMeasurementPtr feature_msg_ptr(new CameraMeasurement);
   feature_msg_ptr->header.stamp = cam0_curr_img_ptr->header.stamp;
+  feature_msg_ptr->header.frame_id = "features";
 
   vector<FeatureIDType> curr_ids(0);
   vector<Point2f> curr_cam0_points(0);
@@ -1355,6 +1365,11 @@ void ImageProcessor::publish() {
     feature_msg_ptr->features[i].v0 = curr_cam0_points_undistorted[i].y;
     feature_msg_ptr->features[i].u1 = curr_cam1_points_undistorted[i].x;
     feature_msg_ptr->features[i].v1 = curr_cam1_points_undistorted[i].y;
+    //distorted points
+    feature_msg_ptr->features[i].du0 = curr_cam0_points[i].x;
+    feature_msg_ptr->features[i].dv0 = curr_cam0_points[i].y;
+    feature_msg_ptr->features[i].du1 = curr_cam1_points[i].x;
+    feature_msg_ptr->features[i].dv1 = curr_cam1_points[i].y;
   }
 
   feature_pub.publish(feature_msg_ptr);
@@ -1553,7 +1568,7 @@ void ImageProcessor::drawFeaturesStereo() {
         curr_cam0_points.erase(id);
         curr_cam1_points.erase(id);
 
-	//sprintf(str, "%lu", (int)id);
+	//sprintf(str, "%x", id);
 	//putText(out_img, str, curr_pt0, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0));
 	nTrack++;
       }
@@ -1570,14 +1585,11 @@ void ImageProcessor::drawFeaturesStereo() {
     }
 
     //draw text
-    sprintf(str, "track count: %03d / %03d / %.2f",nTrack,prev_ids.size(),(float)nTrack/prev_ids.size());
-    rectangle(out_img, Rect(0,0,200,50), Scalar(0, 0, 0),CV_FILLED);
+    sprintf(str, "track count: %03d/%03d  %3.0f%",nTrack,prev_ids.size(),(float)nTrack/prev_ids.size()*100.f);
+    rectangle(out_img, Rect(0,0,300,60), Scalar(0, 0, 0),CV_FILLED);
     putText(out_img, str, Point(8, 12),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(200, 200, 200));
     sprintf(str, "new  count: %03d",curr_cam0_points.size());
     putText(out_img, str, Point(8, 12)+Point(0, 20),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(200, 200, 200));
-
-
-    
 
     cv_bridge::CvImage debug_image(cam0_curr_img_ptr->header, "bgr8", out_img);
     debug_stereo_pub.publish(debug_image.toImageMsg());
@@ -1620,4 +1632,4 @@ void ImageProcessor::featureLifetimeStatistics() {
   return;
 }
 
-} // end namespace msckf_vio
+} // end namespace msckf
